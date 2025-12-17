@@ -31,6 +31,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Generate index.html
+        run: python3 _tools/genindex/genindex.py
       - name: Setup Pages
         uses: actions/configure-pages@v5
       - name: Upload artifact
