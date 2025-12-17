@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transparent PNG Creator</title>
+    <meta name="description" content="Open an image, click colors to make them transparent, and download as PNG.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom Checkerboard Pattern */
+        .checkerboard {
+            background-color: #f0f0f0;
+            background-image:
+                linear-gradient(45deg, #ccc 25%, transparent 25%),
+                linear-gradient(-45deg, #ccc 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #ccc 75%),
+                linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+        
+        /* Range Slider Styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e5e7eb;
+            border-radius: 2px;
+        }
+        
+        .canvas-container {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-slate-800 min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white font-bold">T</div>
+            <h1 class="text-xl font-bold tracking-tight text-slate-900">Transparent PNG</h1>
+        </div>
+        <div class="text-sm text-gray-500 hidden sm:block">
+            Paste image (Ctrl+V) or Drop anywhere
+        </div>
+    </header>
+
+    <!-- Main Tool Area -->
+    <main class="flex-grow container mx-auto p-4 md:p-6 flex flex-col lg:flex-row gap-6">
+        
+        <!-- Controls Sidebar -->
+        <aside class="w-full lg:w-80 flex-shrink-0 flex flex-col gap-6">
+            
+            <!-- Upload Card -->
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Input</h2>
+                
+                <label class="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors" id="drop-zone">
+                    <div class="flex flex-col items-center justify-center pt-5 pb-6 text-center px-4">
+                        <svg class="w-8 h-8 mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                        <p class="mb-1 text-sm text-gray-500"><span class="font-semibold text-blue-600">Click to upload</span> or drag and drop</p>
+                        <p class="text-xs text-gray-400">PNG, JPG, WEBP</p>
+                    </div>
+                    <input id="file-input" type="file" class="hidden" accept="image/*" />
+                </label>
+            </div>
+
+            <!-- Settings Card -->
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-5">
+                <h2 class="text-sm font-semibold text-gray-900 uppercase tracking-wider">Tool Settings</h2>
+
+                <!-- Tolerance -->
+                <div>
+                    <div class="flex justify-between mb-1">
+                        <label for="tolerance" class="text-sm font-medium text-gray-700">Tolerance</label>
+                        <span id="tolerance-value" class="text-sm font-mono text-gray-500">15%</span>
+                    </div>
+                    <input id="tolerance" type="range" min="0" max="100" value="15" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <p class="text-xs text-gray-400 mt-1">Higher values match more shades of the clicked color.</p>
+                </div>
+
+                <!-- Preview Background -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Preview Background</label>
+                    <div class="flex gap-2">
+                        <button class="bg-btn w-8 h-8 rounded-full border border-gray-300 checkerboard shadow-inner ring-2 ring-blue-500 ring-offset-2" onclick="changePreviewBg('checkerboard', this)" title="Checkerboard"></button>
+                        <button class="bg-btn w-8 h-8 rounded-full border border-gray-300 bg-white shadow-inner" onclick="changePreviewBg('white', this)" title="White"></button>
+                        <button class="bg-btn w-8 h-8 rounded-full border border-gray-300 bg-black shadow-inner" onclick="changePreviewBg('black', this)" title="Black"></button>
+                        <button class="bg-btn w-8 h-8 rounded-full border border-gray-300 bg-red-500 shadow-inner" onclick="changePreviewBg('red', this)" title="Red"></button>
+                        <button class="bg-btn w-8 h-8 rounded-full border border-gray-300 bg-green-500 shadow-inner" onclick="changePreviewBg('green', this)" title="Green"></button>
+                        <button class="bg-btn w-8 h-8 rounded-full border border-gray-300 bg-blue-500 shadow-inner" onclick="changePreviewBg('blue', this)" title="Blue"></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
+                <button id="undo-btn" class="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                    Undo Last Action
+                </button>
+                
+                <button id="reset-btn" class="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Reset Image
+                </button>
+
+                <hr class="border-gray-100 my-1">
+
+                <button id="download-btn" class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold shadow-sm transition-transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download PNG
+                </button>
+            </div>
+
+        </aside>
+
+        <!-- Canvas Area -->
+        <section class="flex-grow flex flex-col bg-gray-200 rounded-2xl border border-gray-300 overflow-hidden relative" style="min-height: 400px;">
+            
+            <!-- Toolbar Overlay -->
+            <div class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg border border-gray-200 z-10 text-xs font-medium text-gray-600 pointer-events-none" id="status-pill">
+                Click on the image to remove color
+            </div>
+
+            <!-- Canvas Wrapper -->
+            <div class="w-full h-full overflow-auto flex items-center justify-center p-4 relative checkerboard transition-colors duration-300" id="canvas-bg">
+                <canvas id="canvas" class="cursor-crosshair shadow-2xl hidden"></canvas>
+                
+                <!-- Empty State -->
+                <div id="empty-state" class="text-center p-8">
+                    <div class="w-20 h-20 bg-gray-300 rounded-full mx-auto mb-4 flex items-center justify-center text-gray-500">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <h3 class="text-lg font-medium text-gray-600">No Image Loaded</h3>
+                    <p class="text-gray-500 mt-1">Upload an image or paste from clipboard to start editing.</p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 py-6 text-center text-sm text-gray-500">
+        <p>100% Client-side. Images are processed locally in your browser.</p>
+    </footer>
+
+    <script>
+        // DOM Elements
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        const emptyState = document.getElementById('empty-state');
+        const canvasBg = document.getElementById('canvas-bg');
+        const toleranceInput = document.getElementById('tolerance');
+        const toleranceValue = document.getElementById('tolerance-value');
+        const downloadBtn = document.getElementById('download-btn');
+        const undoBtn = document.getElementById('undo-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const statusPill = document.getElementById('status-pill');
+
+        // State
+        let originalImage = null; // Keeps the original uploaded image
+        let historyStack = []; // Stores ImageData states
+        let currentHistoryIndex = -1;
+        let isProcessing = false;
+
+        // Constants
+        const MAX_HISTORY = 20;
+
+        // --- Initialization ---
+        
+        function init() {
+            updateUIState();
+        }
+
+        // --- Event Listeners ---
+
+        // File Input
+        fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
+
+        // Drag & Drop
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-blue-500', 'bg-blue-50');
+        });
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-blue-500', 'bg-blue-50');
+            handleFiles(e.dataTransfer.files);
+        });
+
+        // Paste
+        window.addEventListener('paste', (e) => {
+            const items = e.clipboardData.items;
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    const blob = items[i].getAsFile();
+                    loadImage(blob);
+                    break;
+                }
+            }
+        });
+
+        // Canvas Click (The Magic)
+        canvas.addEventListener('click', (e) => {
+            if (!originalImage || isProcessing) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            // Calculate scale in case canvas is displayed smaller than actual size via CSS
+            const scaleX = canvas.width / rect.width;
+            const scaleY = canvas.height / rect.height;
+            
+            const x = Math.floor((e.clientX - rect.left) * scaleX);
+            const y = Math.floor((e.clientY - rect.top) * scaleY);
+            
+            // Get clicked color
+            const pixel = ctx.getImageData(x, y, 1, 1).data;
+            const targetColor = { r: pixel[0], g: pixel[1], b: pixel[2], a: pixel[3] };
+
+            // Don't process if already transparent
+            if (targetColor.a === 0) return;
+
+            removeColor(targetColor);
+        });
+
+        // Tolerance Update
+        toleranceInput.addEventListener('input', (e) => {
+            toleranceValue.textContent = e.target.value + '%';
+        });
+
+        // Controls
+        undoBtn.addEventListener('click', undo);
+        resetBtn.addEventListener('click', resetImage);
+        downloadBtn.addEventListener('click', downloadImage);
+
+        // --- Core Logic ---
+
+        function handleFiles(files) {
+            if (files.length > 0 && files[0].type.startsWith('image/')) {
+                loadImage(files[0]);
+            }
+        }
+
+        function loadImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Set canvas size
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    
+                    // Limit max display size for CSS (responsiveness) while keeping resolution
+                    // We let CSS max-width: 100% handle the visual scaling
+                    
+                    // Draw
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Update state
+                    originalImage = img;
+                    historyStack = [];
+                    currentHistoryIndex = -1;
+                    saveState(); // Save initial state
+                    
+                    // UI Updates
+                    canvas.classList.remove('hidden');
+                    emptyState.classList.add('hidden');
+                    statusPill.textContent = "Click on the image to remove color";
+                    updateUIState();
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function saveState() {
+            // Remove any forward history if we start a new branch
+            if (currentHistoryIndex < historyStack.length - 1) {
+                historyStack = historyStack.slice(0, currentHistoryIndex + 1);
+            }
+
+            // Push new state
+            historyStack.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            
+            // Limit stack size
+            if (historyStack.length > MAX_HISTORY) {
+                historyStack.shift();
+            } else {
+                currentHistoryIndex++;
+            }
+            
+            updateUIState();
+        }
+
+        function undo() {
+            if (currentHistoryIndex > 0) {
+                currentHistoryIndex--;
+                ctx.putImageData(historyStack[currentHistoryIndex], 0, 0);
+                updateUIState();
+                statusPill.textContent = "Undo successful";
+                setTimeout(() => statusPill.textContent = "Click on the image to remove color", 2000);
+            }
+        }
+
+        function resetImage() {
+            if (!originalImage) return;
+            // Clear history and restart
+            canvas.width = originalImage.width;
+            canvas.height = originalImage.height;
+            ctx.drawImage(originalImage, 0, 0);
+            
+            historyStack = [];
+            currentHistoryIndex = -1;
+            saveState();
+            statusPill.textContent = "Image reset";
+        }
+
+        function removeColor(targetColor) {
+            isProcessing = true;
+            statusPill.textContent = "Processing...";
+            
+            // Allow UI to render the "Processing" text before freezing
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    const tolerancePercent = parseInt(toleranceInput.value);
+                    // Max distance in RGB space (approx 441 for Euclidean, or 3*255=765 for Manhattan)
+                    // We'll use simple sum of abs differences: max diff is 255*3 = 765
+                    const maxDiff = 765; 
+                    const toleranceLimit = (tolerancePercent / 100) * maxDiff;
+
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    const data = imageData.data;
+                    const len = data.length;
+
+                    // Optimization: Pre-calculate target
+                    const tr = targetColor.r;
+                    const tg = targetColor.g;
+                    const tb = targetColor.b;
+
+                    let modified = false;
+
+                    for (let i = 0; i < len; i += 4) {
+                        // Skip if already transparent
+                        if (data[i + 3] === 0) continue;
+
+                        const r = data[i];
+                        const g = data[i + 1];
+                        const b = data[i + 2];
+
+                        // Calculate distance (Manhattan distance is fast and sufficient for this tool)
+                        const diff = Math.abs(r - tr) + Math.abs(g - tg) + Math.abs(b - tb);
+
+                        if (diff <= toleranceLimit) {
+                            data[i + 3] = 0; // Set Alpha to 0
+                            modified = true;
+                        }
+                    }
+
+                    if (modified) {
+                        ctx.putImageData(imageData, 0, 0);
+                        saveState();
+                        statusPill.textContent = "Color removed";
+                    } else {
+                        statusPill.textContent = "No matching pixels found in range";
+                    }
+
+                    isProcessing = false;
+                }, 10);
+            });
+        }
+
+        function downloadImage() {
+            if (!originalImage) return;
+            
+            const link = document.createElement('a');
+            link.download = 'transparent-edited.png';
+            link.href = canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // UI Helpers
+        function updateUIState() {
+            const hasImage = !!originalImage;
+            const hasHistory = currentHistoryIndex > 0;
+
+            downloadBtn.disabled = !hasImage;
+            resetBtn.disabled = !hasImage;
+            undoBtn.disabled = !hasHistory;
+            
+            if (!hasImage) {
+                downloadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                resetBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                downloadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                resetBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+            
+            if (!hasHistory) {
+                undoBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                undoBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        function changePreviewBg(type, btn) {
+            // Reset all rings
+            document.querySelectorAll('.bg-btn').forEach(b => {
+                b.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+            });
+            // Add ring to active
+            btn.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+
+            canvasBg.className = 'w-full h-full overflow-auto flex items-center justify-center p-4 relative transition-colors duration-300';
+            
+            if (type === 'checkerboard') {
+                canvasBg.classList.add('checkerboard');
+                canvasBg.style.backgroundColor = '#f0f0f0';
+            } else if (type === 'white') {
+                canvasBg.style.backgroundColor = '#ffffff';
+            } else if (type === 'black') {
+                canvasBg.style.backgroundColor = '#000000';
+            } else if (type === 'red') {
+                canvasBg.style.backgroundColor = '#ef4444';
+            } else if (type === 'green') {
+                canvasBg.style.backgroundColor = '#22c55e';
+            } else if (type === 'blue') {
+                canvasBg.style.backgroundColor = '#3b82f6';
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
