@@ -86,12 +86,14 @@
       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
       font-size: 13px;
       line-height: 1.5;
+      --tree-indent: 1.05rem;
+      --tree-indent-gutter: 0.55rem;
     }
 
     details {
-      margin-left: 0.5rem;
+      margin-left: calc(var(--tree-indent) - var(--tree-indent-gutter));
       border-left: 1px dashed #dbe1ea;
-      padding-left: 0.55rem;
+      padding-left: var(--tree-indent-gutter);
     }
 
     details > summary {
@@ -104,7 +106,7 @@
     }
 
     .leaf {
-      margin-left: 1.6rem;
+      margin-left: var(--tree-indent);
       color: #0f172a;
     }
 
@@ -190,7 +192,24 @@ int main(void) {
       return [];
     }
 
-    function renderNode(node, parent, depth = 0) {
+    function buildNodeLabel(node) {
+      const fragment = document.createDocumentFragment();
+      const kind = document.createElement('span');
+      kind.className = 'kind';
+      kind.textContent = node.kind;
+      fragment.appendChild(kind);
+
+      if (node.meta !== null && node.meta !== undefined) {
+        const meta = document.createElement('span');
+        meta.className = 'meta';
+        meta.textContent = `: ${node.meta}`;
+        fragment.appendChild(meta);
+      }
+
+      return fragment;
+    }
+
+    function renderNode(node, parent) {
       // Each node has the shape: {kind, meta, children} and is rendered
       // recursively into <details>/<summary> (expandable) or leaf <div> elements.
       const children = getNodeChildren(node);
@@ -199,8 +218,7 @@ int main(void) {
       if (!hasChildren) {
         const leaf = document.createElement('div');
         leaf.className = 'leaf';
-        leaf.style.marginLeft = `${Math.max(0, depth - 1) * 1.1 + 0.5}rem`;
-        leaf.innerHTML = `<span class="kind">${node.kind}</span>${node.meta ? ` <span class="meta">(${node.meta})</span>` : ''}`;
+        leaf.appendChild(buildNodeLabel(node));
         parent.appendChild(leaf);
         return;
       }
@@ -210,10 +228,10 @@ int main(void) {
       details.open = true;
 
       const summary = document.createElement('summary');
-      summary.innerHTML = `<span class="kind">${node.kind}</span>${node.meta ? ` <span class="meta">(${node.meta})</span>` : ''}`;
+      summary.appendChild(buildNodeLabel(node));
       details.appendChild(summary);
 
-      children.forEach((child) => renderNode(child, details, depth + 1));
+      children.forEach((child) => renderNode(child, details));
       parent.appendChild(details);
     }
 
@@ -264,14 +282,23 @@ import json
 import pycparser
 
 def _meta_for(node):
-    for attr in getattr(node, 'attr_names', ()):  # e.g. op, name, value
-        try:
-            val = getattr(node, attr)
-        except Exception:
-            continue
-        if val not in (None, ''):
-            return f"{attr}={val}"
-    return ""
+    attr_names = getattr(node, 'attr_names', ())
+    if not attr_names:
+        return None
+
+    def is_empty(value):
+        return value is None or (hasattr(value, '__len__') and len(value) == 0)
+
+    showemptyattrs = True
+    attrnames = False
+    nvlist = []
+    for name in attr_names:
+        value = getattr(node, name)
+        if showemptyattrs or not is_empty(value):
+            nvlist.append((name, value))
+    if attrnames:
+        return ", ".join("%s=%s" % nv for nv in nvlist)
+    return ", ".join("%s" % value for (_, value) in nvlist)
 
 
 def _to_tree(node):
