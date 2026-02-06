@@ -182,10 +182,19 @@ int main(void) {
       statusEl.textContent = message;
     }
 
+    function getNodeChildren(node) {
+      if (!node || typeof node !== 'object') return [];
+      const raw = node.children;
+      if (Array.isArray(raw)) return raw;
+      if (raw && typeof raw === 'object') return Object.values(raw);
+      return [];
+    }
+
     function renderNode(node, parent, depth = 0) {
       // Each node has the shape: {kind, meta, children} and is rendered
       // recursively into <details>/<summary> (expandable) or leaf <div> elements.
-      const hasChildren = Array.isArray(node.children) && node.children.length > 0;
+      const children = getNodeChildren(node);
+      const hasChildren = children.length > 0;
 
       if (!hasChildren) {
         const leaf = document.createElement('div');
@@ -204,7 +213,7 @@ int main(void) {
       summary.innerHTML = `<span class="kind">${node.kind}</span>${node.meta ? ` <span class="meta">(${node.meta})</span>` : ''}`;
       details.appendChild(summary);
 
-      node.children.forEach((child) => renderNode(child, details, depth + 1));
+      children.forEach((child) => renderNode(child, details, depth + 1));
       parent.appendChild(details);
     }
 
@@ -222,7 +231,8 @@ int main(void) {
 
       try {
         // parseAst is a Python function proxy exposed from Pyodide.
-        const result = parseAst(src);
+        const resultJson = parseAst(src);
+        const result = JSON.parse(String(resultJson));
         treeEl.innerHTML = '';
         renderNode(result, treeEl);
         setStatus('Parsed successfully');
@@ -250,6 +260,7 @@ int main(void) {
         // Define helper functions in Python to parse C code and convert
         // pycparser's AST node objects into plain JSON-serializable dicts.
         pyodide.runPython(`
+import json
 import pycparser
 
 def _meta_for(node):
@@ -277,7 +288,7 @@ def _to_tree(node):
 def parse_c_to_tree(source):
     parser = pycparser.CParser()
     ast = parser.parse(source)
-    return _to_tree(ast)
+    return json.dumps(_to_tree(ast))
 `);
 
         // Grab the Python parser function and wire it to the input event.
