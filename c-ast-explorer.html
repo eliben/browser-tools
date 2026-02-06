@@ -155,6 +155,8 @@
   </main>
 
   <script type="module">
+    // Load Pyodide as an ES module directly from jsDelivr.
+    // All Python execution happens fully client-side in the browser.
     import { loadPyodide } from 'https://cdn.jsdelivr.net/pyodide/v0.28.3/full/pyodide.mjs';
 
     const statusEl = document.getElementById('status');
@@ -181,7 +183,8 @@ int main(void) {
     }
 
     function renderNode(node, parent, depth = 0) {
-      const label = `${node.kind}${node.meta ? ` (${node.meta})` : ''}`;
+      // Each node has the shape: {kind, meta, children} and is rendered
+      // recursively into <details>/<summary> (expandable) or leaf <div> elements.
       const hasChildren = Array.isArray(node.children) && node.children.length > 0;
 
       if (!hasChildren) {
@@ -194,6 +197,7 @@ int main(void) {
       }
 
       const details = document.createElement('details');
+      // Default to expanded view so users see the full AST immediately.
       details.open = true;
 
       const summary = document.createElement('summary');
@@ -217,6 +221,7 @@ int main(void) {
       const src = sourceEl.value;
 
       try {
+        // parseAst is a Python function proxy exposed from Pyodide.
         const result = parseAst(src);
         treeEl.innerHTML = '';
         renderNode(result, treeEl);
@@ -228,18 +233,22 @@ int main(void) {
     }
 
     function scheduleParse() {
+      // Debounce parsing while typing to avoid parsing on every keystroke.
       clearTimeout(parseTimer);
       parseTimer = setTimeout(runParse, 220);
     }
 
     async function init() {
       try {
+        // Boot Python runtime in-browser, then install pycparser dynamically.
         pyodide = await loadPyodide();
         setStatus('Installing pycparser…');
         await pyodide.loadPackage('micropip');
         const micropip = pyodide.pyimport('micropip');
         await micropip.install('pycparser');
 
+        // Define helper functions in Python to parse C code and convert
+        // pycparser's AST node objects into plain JSON-serializable dicts.
         pyodide.runPython(`
 import pycparser
 
@@ -271,6 +280,7 @@ def parse_c_to_tree(source):
     return _to_tree(ast)
 `);
 
+        // Grab the Python parser function and wire it to the input event.
         parseAst = pyodide.globals.get('parse_c_to_tree');
         sourceEl.addEventListener('input', scheduleParse);
         setStatus('Ready');
