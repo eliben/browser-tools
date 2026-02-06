@@ -140,7 +140,7 @@
 </head>
 <body>
   <header>
-    <h1>C AST Explorer (Pyodide + pycparser)</h1>
+    <h1>C AST Explorer [pyodide (v<span id="pyodide-version">…</span>) + pycparser (v<span id="pycparser-version">…</span>)]</h1>
     <div id="status">Loading Python runtime…</div>
   </header>
 
@@ -164,6 +164,8 @@
     const statusEl = document.getElementById('status');
     const sourceEl = document.getElementById('source');
     const treeEl = document.getElementById('tree');
+    const pyodideVersionEl = document.getElementById('pyodide-version');
+    const pycparserVersionEl = document.getElementById('pycparser-version');
 
     const starterCode = `int add(int a, int b) {
   return a + b;
@@ -182,6 +184,11 @@ int main(void) {
 
     function setStatus(message) {
       statusEl.textContent = message;
+    }
+
+    function setVersion(el, value) {
+      if (!el) return;
+      el.textContent = String(value);
     }
 
     function getNodeChildren(node) {
@@ -270,10 +277,14 @@ int main(void) {
       try {
         // Boot Python runtime in-browser, then install pycparser dynamically.
         pyodide = await loadPyodide();
+        const pyodideVersion = pyodide.version || pyodide.runPython('import pyodide; pyodide.__version__');
+        setVersion(pyodideVersionEl, pyodideVersion);
         setStatus('Installing pycparser…');
         await pyodide.loadPackage('micropip');
         const micropip = pyodide.pyimport('micropip');
-        await micropip.install('pycparser');
+        await micropip.install('pycparser>=3.0');
+        const pycparserVersion = pyodide.runPython('import pycparser; pycparser.__version__');
+        setVersion(pycparserVersionEl, pycparserVersion);
 
         // Define helper functions in Python to parse C code and convert
         // pycparser's AST node objects into plain JSON-serializable dicts.
