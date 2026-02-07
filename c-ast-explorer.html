@@ -42,10 +42,10 @@
 
     .grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.8rem;
+      grid-template-columns: minmax(260px, 1fr) 10px minmax(260px, 1fr);
       padding: 0.8rem;
       min-height: 0;
+      box-sizing: border-box;
     }
 
     .panel {
@@ -56,6 +56,32 @@
       min-height: 0;
       display: grid;
       grid-template-rows: auto 1fr;
+    }
+
+    .splitter {
+      border-radius: 999px;
+      background: #e5e7eb;
+      cursor: col-resize;
+      position: relative;
+      width: 10px;
+      touch-action: none;
+    }
+
+    .splitter::before {
+      content: "";
+      position: absolute;
+      inset: 20% 35%;
+      border-radius: 999px;
+      background: #cbd5f5;
+    }
+
+    .splitter:hover {
+      background: #d8dee9;
+    }
+
+    body.dragging {
+      cursor: col-resize;
+      user-select: none;
     }
 
     .panel h2 {
@@ -135,6 +161,10 @@
         grid-template-columns: 1fr;
         grid-template-rows: 45vh 1fr;
       }
+
+      .splitter {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -144,11 +174,13 @@
     <div id="status">Loading Python runtime…</div>
   </header>
 
-  <main class="grid">
+  <main class="grid" id="panes">
     <section class="panel">
       <h2>C source code</h2>
       <textarea id="source" spellcheck="false"></textarea>
     </section>
+
+    <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" aria-label="Resize panes"></div>
 
     <section class="panel">
       <h2>AST tree (click to expand/collapse)</h2>
@@ -166,6 +198,8 @@
     const treeEl = document.getElementById('tree');
     const pyodideVersionEl = document.getElementById('pyodide-version');
     const pycparserVersionEl = document.getElementById('pycparser-version');
+    const panesEl = document.getElementById('panes');
+    const splitterEl = document.getElementById('splitter');
 
     const starterCode = `int add(int a, int b) {
   return a + b;
@@ -189,6 +223,86 @@ int main(void) {
     function setVersion(el, value) {
       if (!el) return;
       el.textContent = String(value);
+    }
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function isStackedLayout() {
+      return window.matchMedia('(max-width: 900px)').matches;
+    }
+
+    function applyPaneSizes(leftWidth, rightWidth, splitterWidth) {
+      panesEl.style.gridTemplateColumns = `${leftWidth}px ${splitterWidth}px ${rightWidth}px`;
+    }
+
+    function initSplitter() {
+      if (!splitterEl || !panesEl) return;
+
+      let dragging = false;
+      let lastRatio = 0.5;
+      const minPane = 260;
+      const splitterWidth = splitterEl.offsetWidth || 10;
+
+      function getContentWidth() {
+        const style = getComputedStyle(panesEl);
+        const paddingLeft = parseFloat(style.paddingLeft) || 0;
+        const paddingRight = parseFloat(style.paddingRight) || 0;
+        return panesEl.clientWidth - paddingLeft - paddingRight;
+      }
+
+      function updateFromRatio() {
+        if (isStackedLayout()) {
+          panesEl.style.gridTemplateColumns = '';
+          return;
+        }
+        const contentWidth = getContentWidth();
+        const available = contentWidth - splitterWidth;
+        if (available <= 0) return;
+        const effectiveMin = Math.min(minPane, available / 2);
+        const left = clamp(available * lastRatio, effectiveMin, available - effectiveMin);
+        const right = available - left;
+        applyPaneSizes(left, right, splitterWidth);
+      }
+
+      function onPointerMove(event) {
+        if (!dragging) return;
+        const rect = panesEl.getBoundingClientRect();
+        const style = getComputedStyle(panesEl);
+        const paddingLeft = parseFloat(style.paddingLeft) || 0;
+        const paddingRight = parseFloat(style.paddingRight) || 0;
+        const contentWidth = panesEl.clientWidth - paddingLeft - paddingRight;
+        const available = contentWidth - splitterWidth;
+        const effectiveMin = Math.min(minPane, available / 2);
+        const maxLeft = available - effectiveMin;
+        const minLeft = effectiveMin;
+        const rawLeft = event.clientX - rect.left - paddingLeft;
+        const left = clamp(rawLeft, minLeft, maxLeft);
+        const right = available - left;
+        lastRatio = left / available;
+        applyPaneSizes(left, right, splitterWidth);
+      }
+
+      function stopDrag() {
+        if (!dragging) return;
+        dragging = false;
+        document.body.classList.remove('dragging');
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', stopDrag);
+      }
+
+      splitterEl.addEventListener('pointerdown', (event) => {
+        if (isStackedLayout()) return;
+        dragging = true;
+        splitterEl.setPointerCapture(event.pointerId);
+        document.body.classList.add('dragging');
+        window.addEventListener('pointermove', onPointerMove);
+        window.addEventListener('pointerup', stopDrag);
+      });
+
+      window.addEventListener('resize', updateFromRatio);
+      updateFromRatio();
     }
 
     function getNodeChildren(node) {
@@ -340,6 +454,7 @@ def parse_c_to_tree(source):
       }
     }
 
+    initSplitter();
     init();
   </script>
 </body>
