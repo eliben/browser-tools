@@ -1,0 +1,448 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Unit Circle Trig Explorer</title>
+    <style>
+      :root {
+        --bg: #f7f4ee;
+        --panel: #ffffff;
+        --ink: #1f1f1f;
+        --muted: #6a645c;
+        --accent: #2b6cb0;
+        --accent-2: #d97706;
+        --grid: #d9d2c6;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Georgia", "Times New Roman", serif;
+        background: radial-gradient(circle at top left, #ffffff 0%, var(--bg) 55%, #efe9df 100%);
+        color: var(--ink);
+      }
+
+      .page {
+        min-height: 100vh;
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 24px;
+        padding: 24px;
+      }
+
+      .canvas-card,
+      .panel {
+        background: var(--panel);
+        border: 1px solid #e4ded4;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(55, 49, 40, 0.12);
+      }
+
+      .canvas-card {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .canvas-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 4px 8px 12px;
+        color: var(--muted);
+        font-size: 14px;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+      }
+
+      .canvas-wrap {
+        width: 100%;
+        max-width: 70vh;
+        aspect-ratio: 1 / 1;
+        align-self: center;
+      }
+
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+        border-radius: 12px;
+        background: #fbfaf7;
+        border: 1px solid #e5ded2;
+        touch-action: none;
+      }
+
+      .panel {
+        padding: 20px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+
+      .panel h1 {
+        margin: 0;
+        font-size: 26px;
+        letter-spacing: 0.2px;
+      }
+
+      .panel p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.5;
+      }
+
+      .inputs {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      label {
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .input-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      input[type="number"] {
+        width: 100%;
+        padding: 10px 12px;
+        font-size: 16px;
+        border-radius: 10px;
+        border: 1px solid #d6cfc2;
+        font-family: "Courier New", monospace;
+      }
+
+      .stats {
+        border-top: 1px dashed #ded7cb;
+        padding-top: 16px;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+        font-family: "Courier New", monospace;
+        font-size: 16px;
+      }
+
+      .stat-line {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+      }
+
+      .stat-line span:first-child {
+        color: var(--muted);
+      }
+
+      .legend {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      .legend .swatch {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+      }
+
+      @media (max-width: 900px) {
+        .page {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <section class="canvas-card">
+        <div class="canvas-header">
+          <span>Unit Circle</span>
+          <span>Drag the radius</span>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="unitCanvas" aria-label="Unit circle canvas"></canvas>
+        </div>
+      </section>
+      <section class="panel">
+        <div>
+          <h1>Trigonometry Explorer</h1>
+          <p>Move the radius to see how angle measures relate to sine, cosine, and tangent.</p>
+        </div>
+
+        <div class="inputs">
+          <div>
+            <label for="degInput">Angle (degrees)</label>
+            <div class="input-row">
+              <input id="degInput" type="number" step="0.1" />
+              <span>°</span>
+            </div>
+          </div>
+          <div>
+            <label for="radInput">Angle (radians)</label>
+            <div class="input-row">
+              <input id="radInput" type="number" step="0.01" />
+              <span>rad</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat-line">
+            <span>sin(θ)</span>
+            <strong id="sinValue">0</strong>
+          </div>
+          <div class="stat-line">
+            <span>cos(θ)</span>
+            <strong id="cosValue">0</strong>
+          </div>
+          <div class="stat-line">
+            <span>tan(θ)</span>
+            <strong id="tanValue">0</strong>
+          </div>
+        </div>
+
+        <div class="legend">
+          <div><span class="swatch" style="background: var(--accent);"></span>Radius</div>
+          <div><span class="swatch" style="background: var(--accent-2);"></span>Point on circle</div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const canvas = document.getElementById("unitCanvas");
+      const canvasWrap = document.querySelector(".canvas-wrap");
+      const ctx = canvas.getContext("2d");
+
+      const degInput = document.getElementById("degInput");
+      const radInput = document.getElementById("radInput");
+      const sinValue = document.getElementById("sinValue");
+      const cosValue = document.getElementById("cosValue");
+      const tanValue = document.getElementById("tanValue");
+
+      const state = {
+        angle: Math.PI / 3,
+        dragging: false,
+        size: 0,
+        center: { x: 0, y: 0 },
+        radius: 0,
+      };
+
+      function formatNumber(value, digits = 6) {
+        const fixed = Number.parseFloat(value.toFixed(digits));
+        return fixed.toString();
+      }
+
+      function updateInputs() {
+        const degrees = (state.angle * 180) / Math.PI;
+        degInput.value = formatNumber(degrees, 4);
+        radInput.value = formatNumber(state.angle, 4);
+      }
+
+      function updateStats() {
+        const sin = Math.sin(state.angle);
+        const cos = Math.cos(state.angle);
+        const tan = Math.abs(cos) < 1e-8 ? null : sin / cos;
+        sinValue.textContent = formatNumber(sin, 6);
+        cosValue.textContent = formatNumber(cos, 6);
+        tanValue.textContent = tan === null ? "undefined" : formatNumber(tan, 6);
+      }
+
+      function normalizeAngle(angle) {
+        const tau = Math.PI * 2;
+        let normalized = angle % tau;
+        if (normalized < 0) normalized += tau;
+        return normalized;
+      }
+
+      function setAngle(angle) {
+        state.angle = normalizeAngle(angle);
+        updateInputs();
+        updateStats();
+        draw();
+      }
+
+      function resize() {
+        const rect = canvasWrap.getBoundingClientRect();
+        const size = Math.min(rect.width, rect.height || rect.width);
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.floor(size * dpr);
+        canvas.height = Math.floor(size * dpr);
+        state.size = size;
+        state.center = { x: size / 2, y: size / 2 };
+        state.radius = size * 0.38;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        draw();
+      }
+
+      function drawAxes() {
+        ctx.strokeStyle = "#d9d2c6";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(0, state.center.y);
+        ctx.lineTo(state.size, state.center.y);
+        ctx.moveTo(state.center.x, 0);
+        ctx.lineTo(state.center.x, state.size);
+        ctx.stroke();
+      }
+
+      function drawCircle() {
+        ctx.strokeStyle = "#a79c8b";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(state.center.x, state.center.y, state.radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      function drawAxisPoints() {
+        const points = [
+          { x: state.center.x + state.radius, y: state.center.y },
+          { x: state.center.x - state.radius, y: state.center.y },
+          { x: state.center.x, y: state.center.y - state.radius },
+          { x: state.center.x, y: state.center.y + state.radius },
+        ];
+        ctx.fillStyle = "#a79c8b";
+        for (const pt of points) {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawLabels() {
+        const offset = 16;
+        const axisGap = 10;
+        ctx.fillStyle = "#6a645c";
+        ctx.font = "14px 'Georgia', 'Times New Roman', serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        ctx.fillText("x", state.size - offset, state.center.y - axisGap);
+        ctx.fillText("y", state.center.x + axisGap, offset);
+
+        ctx.font = "13px 'Courier New', monospace";
+        ctx.fillStyle = "#4f4a44";
+
+        ctx.fillText("(1, 0)", state.center.x + state.radius + 30, state.center.y - axisGap);
+        ctx.fillText("(-1, 0)", state.center.x - state.radius - 38, state.center.y - axisGap);
+        ctx.fillText("(0, 1)", state.center.x + axisGap + 18, state.center.y - state.radius - 22);
+        ctx.fillText("(0, -1)", state.center.x + axisGap + 18, state.center.y + state.radius + 22);
+      }
+
+      function drawRadius() {
+        const x = state.center.x + state.radius * Math.cos(state.angle);
+        const y = state.center.y - state.radius * Math.sin(state.angle);
+
+        ctx.strokeStyle = "#2b6cb0";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(state.center.x, state.center.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        ctx.fillStyle = "#d97706";
+        ctx.beginPath();
+        ctx.arc(x, y, 7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawAngleArc() {
+        ctx.strokeStyle = "rgba(43, 108, 176, 0.4)";
+        ctx.lineWidth = 2;
+        const arcRadius = state.radius * 0.3;
+        ctx.beginPath();
+        ctx.arc(state.center.x, state.center.y, arcRadius, 0, -state.angle, true);
+        ctx.stroke();
+
+        const labelAngle = Math.PI / 12;
+        const labelRadius = arcRadius + 14;
+        const labelX = state.center.x + labelRadius * Math.cos(labelAngle);
+        const labelY = state.center.y - labelRadius * Math.sin(labelAngle);
+        const angleDiff = Math.abs(normalizeAngle(state.angle) - normalizeAngle(labelAngle));
+        const wrappedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
+        if (wrappedDiff > 0.28) {
+          ctx.fillStyle = "rgba(43, 108, 176, 0.85)";
+          ctx.font = "18px 'Georgia', 'Times New Roman', serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("θ", labelX, labelY);
+        }
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, state.size, state.size);
+        drawAxes();
+        drawCircle();
+        drawAxisPoints();
+        drawAngleArc();
+        drawRadius();
+        drawLabels();
+      }
+
+      function getAngleFromEvent(event) {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        const dx = x - rect.width / 2;
+        const dy = rect.height / 2 - y;
+        return Math.atan2(dy, dx);
+      }
+
+      function handlePointerDown(event) {
+        state.dragging = true;
+        canvas.setPointerCapture(event.pointerId);
+        setAngle(getAngleFromEvent(event));
+      }
+
+      function handlePointerMove(event) {
+        if (!state.dragging) return;
+        setAngle(getAngleFromEvent(event));
+      }
+
+      function handlePointerUp(event) {
+        state.dragging = false;
+        if (canvas.hasPointerCapture(event.pointerId)) {
+          canvas.releasePointerCapture(event.pointerId);
+        }
+      }
+
+      degInput.addEventListener("change", (event) => {
+        const value = Number.parseFloat(event.target.value);
+        if (Number.isFinite(value)) {
+          setAngle((value * Math.PI) / 180);
+        }
+      });
+
+      radInput.addEventListener("change", (event) => {
+        const value = Number.parseFloat(event.target.value);
+        if (Number.isFinite(value)) {
+          setAngle(value);
+        }
+      });
+
+      canvas.addEventListener("pointerdown", handlePointerDown);
+      canvas.addEventListener("pointermove", handlePointerMove);
+      canvas.addEventListener("pointerup", handlePointerUp);
+      canvas.addEventListener("pointerleave", handlePointerUp);
+
+      const resizeObserver = new ResizeObserver(() => resize());
+      resizeObserver.observe(canvasWrap);
+      window.addEventListener("resize", resize);
+
+      resize();
+      setAngle(state.angle);
+    </script>
+  </body>
+</html>
