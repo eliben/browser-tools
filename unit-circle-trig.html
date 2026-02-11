@@ -178,8 +178,10 @@
       </section>
       <section class="panel">
         <div>
-          <h1>Trigonometry Explorer</h1>
-          <p>Move the radius to see how angle measures relate to sine, cosine, and tangent.</p>
+          <h1>Unit circle trig Explorer</h1>
+          <p>Move the radius to see how angle measures relate to sine, cosine, and tangent.
+            You can also update the angle numbers in the box below and the line will move.
+          </p>
         </div>
 
         <div class="inputs">
@@ -334,9 +336,6 @@
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        ctx.fillText("x", state.size - offset, state.center.y - axisGap);
-        ctx.fillText("y", state.center.x + axisGap, offset);
-
         ctx.font = "13px 'Courier New', monospace";
         ctx.fillStyle = "#4f4a44";
 
@@ -377,7 +376,8 @@
         const labelY = state.center.y - labelRadius * Math.sin(labelAngle);
         const angleDiff = Math.abs(normalizeAngle(state.angle) - normalizeAngle(labelAngle));
         const wrappedDiff = Math.min(angleDiff, Math.PI * 2 - angleDiff);
-        if (wrappedDiff > 0.28) {
+        const minLabelSeparation = (5 * Math.PI) / 180;
+        if (wrappedDiff >= minLabelSeparation) {
           ctx.fillStyle = "rgba(43, 108, 176, 0.85)";
           ctx.font = "18px 'Georgia', 'Times New Roman', serif";
           ctx.textAlign = "center";
