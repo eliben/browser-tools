@@ -240,24 +240,29 @@
         radius: 0,
       };
 
-      function formatNumber(value, digits = 6) {
-        const fixed = Number.parseFloat(value.toFixed(digits));
-        return fixed.toString();
+      function formatNumber(value) {
+        const rounded = Math.abs(value) < 5e-4 ? 0 : value;
+        return rounded.toFixed(3);
       }
 
       function updateInputs() {
         const degrees = (state.angle * 180) / Math.PI;
-        degInput.value = formatNumber(degrees, 4);
-        radInput.value = formatNumber(state.angle, 4);
+        degInput.value = formatNumber(degrees);
+        radInput.value = formatNumber(state.angle);
       }
 
       function updateStats() {
         const sin = Math.sin(state.angle);
         const cos = Math.cos(state.angle);
-        const tan = Math.abs(cos) < 1e-8 ? null : sin / cos;
-        sinValue.textContent = formatNumber(sin, 6);
-        cosValue.textContent = formatNumber(cos, 6);
-        tanValue.textContent = tan === null ? "undefined" : formatNumber(tan, 6);
+        const tan =
+          Math.abs(cos) < 1e-8 ? (sin >= 0 ? Infinity : -Infinity) : sin / cos;
+        sinValue.textContent = formatNumber(sin);
+        cosValue.textContent = formatNumber(cos);
+        tanValue.textContent = Number.isFinite(tan)
+          ? formatNumber(tan)
+          : tan > 0
+            ? "inf"
+            : "-inf";
       }
 
       function normalizeAngle(angle) {
