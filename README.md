@@ -12,3 +12,6 @@ Availailable online at https://eliben.github.io/browser-tools/
 * [C AST Explorer](https://eliben.github.io/browser-tools/c-ast-explorer) -
   parse C code in the browser with [pycparser](https://github.com/eliben/pycparser)
   and interactively explore its AST tree.
+
+* [Unit circle trig](https://eliben.github.io/browser-tools/unit-circle-trig) -
+  educational tool for exploring trigonometric functions on the unit circle.
